@@ -1,0 +1,15 @@
+{
+  "name": "null-aware-relational-optimizer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive constrained relational plan optimizer with NULL and outer-join predicate pushdown counterexamples.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "python3 -m http.server 8123",
+    "check": "node --check src/dsl.js && node --check src/engine.js && node --check src/rules.js && node --check src/optimize.js && node --check src/examples.js && node --check src/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

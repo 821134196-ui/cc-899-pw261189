@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>受限关系计划优化器 · NULL 与外连接反例实验</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>受限关系计划优化器</h1>
+      <p>Filter · INNER/LEFT JOIN · Project；逐步审计谓词下推在三值逻辑、NULL 扩展行和外连接上的合法性。</p>
+    </div>
+    <div class="topbar-badges">
+      <span class="badge safe">3VL</span>
+      <span class="badge safe">Bag 语义</span>
+      <span class="badge warn">反例驱动</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <section class="panel">
+        <label class="field-label" for="exampleSelect">内置计划 / 反例</label>
+        <select id="exampleSelect" class="control"></select>
+        <p id="exampleNote" class="example-note"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>可编辑小计划</h2>
+          <div class="mini-actions">
+            <button id="formatPlanBtn" class="btn tiny" type="button">格式化</button>
+            <button id="resetExampleBtn" class="btn tiny" type="button">恢复示例</button>
+          </div>
+        </div>
+        <textarea id="planEditor" class="plan-editor" spellcheck="false" aria-label="关系计划 DSL"></textarea>
+        <div id="parseStatus" class="parse-status"></div>
+        <button id="runEditorBtn" class="btn primary full" type="button">解析并从编辑器重新优化</button>
+
+        <details class="syntax-help">
+          <summary>DSL 语法</summary>
+          <pre>(project [e.id, e.name AS name]
+  (filter {e.active = true AND x IS NULL}
+    (join left {e.dept_id = d.id}
+      (table emp e)
+      (table dept d))))</pre>
+          <p>支持 <code>AND/OR/NOT</code>、<code>= &lt;&gt; &lt; &lt;= &gt; &gt;=</code>、<code>IS [NOT] NULL</code>、算术和括号。字符串用单引号。</p>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>可编辑行数据</h2>
+          <span class="hint">空输入 = NULL</span>
+        </div>
+        <div id="tableTabs" class="table-tabs"></div>
+        <div id="dataEditor"></div>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <section class="panel progress-panel">
+        <div class="panel-title-row">
+          <h2>优化轨迹</h2>
+          <div class="step-controls">
+            <button id="prevStepBtn" class="btn tiny" type="button">← 上一步</button>
+            <span id="stepLabel" class="step-label">—</span>
+            <button id="nextStepBtn" class="btn tiny" type="button">下一步 →</button>
+            <button id="runAllBtn" class="btn tiny primary" type="button">重新计算全部</button>
+          </div>
+        </div>
+        <div id="stepper" class="stepper"></div>
+        <div id="globalVerdict" class="global-verdict"></div>
+      </section>
+
+      <section id="forcedBanner" class="forced-banner hidden"></section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>本步候选审计</h2>
+          <div id="candidateCounts" class="candidate-counts"></div>
+        </div>
+        <div id="candidateList" class="candidate-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>计划变化</h2>
+          <span class="hint">推荐候选的 Before / After；错误候选可在上方强制应用</span>
+        </div>
+        <div class="plan-diff-grid">
+          <div>
+            <h3>Before</h3>
+            <pre id="beforePlan" class="code-block"></pre>
+          </div>
+          <div>
+            <h3>After（推荐 / 当前步骤采纳）</h3>
+            <pre id="afterPlan" class="code-block safe-border"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>行结果与等价性差分</h2>
+          <div id="resultSummary" class="result-summary"></div>
+        </div>
+        <div class="result-grid">
+          <div>
+            <h3>原始计划结果</h3>
+            <div id="originalResult" class="table-wrap"></div>
+          </div>
+          <div>
+            <h3>安全优化后结果</h3>
+            <div id="finalResult" class="table-wrap"></div>
+          </div>
+        </div>
+        <div id="diffSamples" class="diff-samples"></div>
+        <div id="forcedResultWrap" class="forced-result-wrap hidden">
+          <h3 class="danger-text">强制应用错误候选后的结果</h3>
+          <div id="forcedResult" class="table-wrap"></div>
+          <div id="forcedDiffSamples" class="diff-samples"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>谓词下推合法性矩阵</h2>
+          <span class="hint">关键不是“引用了哪张表”，而是谓词位于 WHERE 还是 ON，以及该侧是否被外连接保留。</span>
+        </div>
+        <div class="table-wrap">
+          <table class="matrix-table">
+            <thead><tr><th>谓词位置</th><th>连接</th><th>引用侧</th><th>判定</th><th>规则</th></tr></thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="./bundle.js" defer></script>
+</body>
+</html>
